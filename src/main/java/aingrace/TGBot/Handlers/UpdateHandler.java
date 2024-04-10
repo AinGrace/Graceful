@@ -28,10 +28,10 @@ public interface UpdateHandler {
     }
 
     default Optional<String> getText(Update update) {
-        return Optional.ofNullable(getMessage(update).orElseThrow().getText());
+        return getMessage(update).map(Message::getText);
     }
 
     default Optional<Long> getChatId(Update update) {
-        return Optional.ofNullable(getMessage(update).orElseThrow().getChatId());
+        return getMessage(update).map(Message::getChatId);
     }
 }

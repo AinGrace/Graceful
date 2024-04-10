@@ -29,7 +29,6 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
     public void consume(Update update) {
         log.info("Update received");
         publisher.publishEvent(new UpdateReceivedEvent(this, update));
-
     }
 
     @Override
