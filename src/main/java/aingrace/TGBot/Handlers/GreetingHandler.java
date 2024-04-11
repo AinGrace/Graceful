@@ -19,7 +19,8 @@ public class GreetingHandler implements UpdateHandler {
 
         String timeOfDay = LocalDateTime.now().getHour() < 18 ? "День" : "Вечер";
         String greetings = "Добрый " + timeOfDay + " я бот созданный на спринге";
-        SendMessage sendMessage = SendMessage.builder()
+
+        var sendMessage = SendMessage.builder()
                 .text(greetings)
                 .chatId(getChatId(update).orElseThrow())
                 .build();

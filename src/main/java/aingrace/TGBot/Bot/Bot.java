@@ -11,8 +11,6 @@ import org.telegram.telegrambots.longpolling.starter.SpringLongPollingBot;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
-import java.util.List;
-
 
 @Slf4j
 @Component
@@ -29,11 +27,6 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
     public void consume(Update update) {
         log.info("Update received");
         publisher.publishEvent(new UpdateReceivedEvent(this, update));
-    }
-
-    @Override
-    public void consume(List<Update> updates) {
-        updatesProcessorExecutor.execute(() -> this.consume(updates.getLast()));
     }
 
     @Override
