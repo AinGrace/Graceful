@@ -1,6 +1,5 @@
 package aingrace.TGBot.Handlers;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,15 +13,14 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLConnection;
-import java.util.Map;
-import java.util.Set;
 
 @Slf4j
 @Service
 public class WeatherHandler implements UpdateHandler {
 
-    private final String lang = "&lang=ru";
-    @Value("${weatherApi.Key")
+    private final String lang = "lang=ru";
+
+    @Value("${weatherApi.Key}")
     private String key;
 
 //TODO AAAAAAA
@@ -37,7 +35,8 @@ public class WeatherHandler implements UpdateHandler {
 
     private void getCurrentForecast(String arg) {
 
-        URL url = UrlResource.from("http://api.weatherapi.com/v1/current.json?key=&lang=ru&q=" + arg).getURL();
+        String formatted = String.format("http://api.weatherapi.com/v1/current.json?key=%s&lang=ru&q=%s", key, arg);
+        URL url = UrlResource.from(formatted).getURL();
 
         try {
             URLConnection connection = url.openConnection();
@@ -46,17 +45,17 @@ public class WeatherHandler implements UpdateHandler {
 
             BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
             String responce = reader.lines().reduce(String::concat).get();
-            ObjectMapper objectMapper = new ObjectMapper();
+            ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
 
-            Map<String, Object> objectMap = objectMapper.readValue(responce, new TypeReference<>(){});
+            CurrentWeather currentWeather = objectMapper.readValue(responce, CurrentWeather.class);
 
-            Set<String> strings = objectMap.keySet();
+
 
 
             System.out.println("blah");
 
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            log.error(e.getMessage());
         }
 
     }
