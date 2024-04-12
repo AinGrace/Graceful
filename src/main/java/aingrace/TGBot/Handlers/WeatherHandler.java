@@ -5,7 +5,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 import java.io.BufferedReader;
@@ -18,26 +20,47 @@ import java.net.URLConnection;
 @Service
 public class WeatherHandler implements UpdateHandler {
 
-    private final String lang = "lang=ru";
+    private final String ENDPOINT = "https://api.weatherapi.com/v1/current.json?";
+    private final String KEY;
+    private final String LANG = "&lang=ru";
 
-    @Value("${weatherApi.Key}")
-    private String key;
 
-//TODO AAAAAAA
+    public WeatherHandler(@Value("${weatherApi.Key}") String key) {
+        this.KEY = "key=" + key;
+    }
+
     @Override
     public void handle(Update update, TelegramClient client) {
         if (getText(update).filter(text -> text.matches("/погода \\w+")).isEmpty()) return;
 
-        String arg = getText(update).get().substring(8);
+        String forCity = getText(update).get().substring(8);
+        long chatId = getChatId(update).get();
 
-        getCurrentForecast(arg);
+        String currentForecast = getCurrentForecast("&q=" + forCity);
+
+        var builder = SendMessage.builder().chatId(chatId).parseMode("HTML");
+
+        if (currentForecast.isBlank()) {
+            currentForecast = "can't get the weather data for " + forCity;
+            SendMessage sendMessage = builder.text(currentForecast).build();
+            send(client, sendMessage);
+        } else {
+            SendMessage sendMessage = builder.text(currentForecast).build();
+            send(client, sendMessage);
+        }
     }
 
-    private void getCurrentForecast(String arg) {
+    private void send(TelegramClient client, SendMessage sendMessage) {
+        try {
+            client.execute(sendMessage);
+        } catch (TelegramApiException e) {
+            log.error(e.getLocalizedMessage());
+        }
+    }
 
-        String formatted = String.format("http://api.weatherapi.com/v1/current.json?key=%s&lang=ru&q=%s", key, arg);
+    private String getCurrentForecast(String arg) {
+        String formatted = String.format(ENDPOINT + KEY + LANG + arg);
         URL url = UrlResource.from(formatted).getURL();
-
         try {
             URLConnection connection = url.openConnection();
 
@@ -49,14 +72,11 @@ public class WeatherHandler implements UpdateHandler {
 
             CurrentWeather currentWeather = objectMapper.readValue(responce, CurrentWeather.class);
 
-
-
-
-            System.out.println("blah");
+            return currentWeather.getWeather();
 
         } catch (IOException e) {
-            log.error(e.getMessage());
+            log.error(e.getLocalizedMessage());
+            return "";
         }
-
     }
 }
