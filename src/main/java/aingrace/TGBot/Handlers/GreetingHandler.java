@@ -1,5 +1,6 @@
 package aingrace.TGBot.Handlers;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -11,10 +12,13 @@ import java.time.LocalDateTime;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class GreetingHandler implements UpdateHandler {
 
+    private final TelegramClient client;
+
     @Override
-    public void handle(Update update, TelegramClient client) {
+    public void handle(Update update) {
         if (getText(update).filter(text -> text.matches("[Бб]от")).isEmpty()) return;
 
         String timeOfDay = LocalDateTime.now().getHour() < 18 ? "День" : "Вечер";
@@ -32,4 +36,3 @@ public class GreetingHandler implements UpdateHandler {
         }
     }
 }
-
