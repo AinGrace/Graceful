@@ -126,12 +126,12 @@ public class WeatherHandler implements UpdateHandler {
     }
 
 //    @Scheduled(cron = "3 * * * * *") TODO
-    private void sendWeatherAtMidnight() {
-        String weather = weatherClient.forecastForCity(key, "ru", "Baku").todayWeather();
-        var sendMessage = SendMessage.builder().chatId(5012958501L).text(weather).parseMode("HTML").build();
-
-        send(client, sendMessage);
-    }
+//    private void sendWeatherAtMidnight() {
+//        String weather = weatherClient.forecastForCity(key, "ru", "Baku").todayWeather();
+//        var sendMessage = SendMessage.builder().chatId(5012958501L).text(weather).parseMode("HTML").build();
+//
+//        send(client, sendMessage);
+//    }
 
     private void send(TelegramClient client, SendMessage sendMessage) {
         try {

@@ -7,15 +7,15 @@ public record WeatherData(Location location, Current current, Forecast forecast)
                     """
                     <b>[Погода на данный момент]</b>
                     
-                    Город -> %s
-                    Страна -> %s
-                    Погода -> %s
-                    Темпратура -> %s градусов
-                    Чувствуется как -> %s градусов
-                    Скорость ветра -> %s Км/ч
-                    Влажность -> %s
+                    <b>Город</b> --> <u>%s</u>
+                    <b>Страна</b> --> <u>%s</u>
+                    <b>Погода</b> --> <u>%s</u>
+                    <b>Темпратура</b> --> <u>%s градусов</u>
+                    <b>Чувствуется</b> <b>как</b> --> <u>%s градусов</u>
+                    <b>Скорость</b> <b>ветра</b> --> <u>%s Км/ч</u>
+                    <b>Влажность</b> --> <u>%s</u>
                     
-                    Данные обновлены в %s по местному времени
+                    <blockquote>Данные обновлены в %s по местному времени</blockquote>
                     """,
                 location.name(), location.country(), current.condition().text(),
                 current.temperature(), current.feelsLikeC(), current.windKph(),
@@ -29,14 +29,14 @@ public record WeatherData(Location location, Current current, Forecast forecast)
                 """
                 <b>[Погода на сегодня]</b>
                 
-                    Город -> %s
-                    Страна -> %s
-                    Погода -> В основном %s
-                    Макс темпратура -> %s градусов
-                    Мин темрпатура -> %s градусов
-                    Средняя темрпатура -> %s градусов
-                    Скорость ветра -> %s Км/Ч
-                    Влажность -> %s
+                    <b>Город</b> >> <u>%s</u>
+                    <b>Страна</b> >> <u>%s</u>
+                    <b>Погода</b> >> <u>В основном %s</u>
+                    <b>Макс</b> <b>темпратура</b> >> <u>%s градусов</u>
+                    <b>Мин</b> <b>темрпатура</b> >> <u>%s градусов</u>
+                    <b>Средняя</b> <b>темрпатура</b> >> <u>%s градусов</u>
+                    <b>Скорость</b> <b>ветра</b> >> <u>%s Км/Ч</u>
+                    <b>Влажность</b> >> <u>%s</u>
                 """,
                 location.name(), location.country(), conditionText, day.maxtempC(),
                 day.mintempC(), day.avgtempC(), day.maxwindKph(), day.avghumidity()+"%");
