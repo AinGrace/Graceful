@@ -8,7 +8,6 @@ import org.springframework.web.service.annotation.GetExchange;
 import java.util.Set;
 
 public interface WeatherHttpClient {
-
     @GetExchange("/forecast.json?key={key}&lang={lang}&q={city}")
     WeatherData forecastForCity(@PathVariable String key, @PathVariable String lang, @PathVariable String city);
 

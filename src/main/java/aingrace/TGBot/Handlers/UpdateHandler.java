@@ -12,7 +12,7 @@ public interface UpdateHandler {
 
     void handle(Update update);
 
-    @EventListener
+    @EventListener(UpdateReceivedEvent.class)
     default void process(UpdateReceivedEvent event) {
         handle(event.update);
     }

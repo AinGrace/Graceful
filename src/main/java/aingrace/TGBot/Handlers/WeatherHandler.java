@@ -2,64 +2,72 @@ package aingrace.TGBot.Handlers;
 
 import aingrace.TGBot.Data.Weather.Location;
 import aingrace.TGBot.Data.Weather.WeatherData;
-import aingrace.TGBot.HttpClients.WeatherHttpClient;
+import aingrace.TGBot.Repository.WeatherRepository;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.NotNull;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
+@Lazy
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class WeatherHandler implements UpdateHandler {
 
-    private final WeatherHttpClient weatherClient;
+    private final Map<String, InlineKeyboardMarkup> markups = new HashMap<>();
+    private final WeatherRepository repository;
     private final TelegramClient client;
 
     private WeatherData weather;
-
-    @Value("${weatherApi.Key}")
-    private String key;
+    private int messageId;
 
     @Override
     public void handle(Update update) {
-        getCallbackQuery(update).filter(query -> query.getData().startsWith("current")).ifPresent(this::handleQuery);
-        getCallbackQuery(update).filter(query -> query.getData().startsWith("today")).ifPresent(this::handleQuery);
-        getCallbackQuery(update).filter(query -> query.getData().startsWith("WH")).ifPresent(this::handleQuery);
+        getCallbackQuery(update).ifPresent(this::handleQuery);
 
-        if (getText(update).filter(text -> text.matches("/погода \\w+")).isEmpty()) return;
+        getText(update).filter(text -> text.matches("/weather \\w+"))
+                .ifPresent(_ -> handleUpdate(update));
+    }
 
-        String city = getText(update).orElseThrow().substring(8);
+    private void handleUpdate(Update update) {
+        markups.remove("Locations");
+
+        String city = getText(update).orElseThrow().split(" ")[1].toLowerCase();
         long chatId = getChatId(update).orElseThrow();
         var messageBuilder = SendMessage.builder()
                 .chatId(chatId)
                 .parseMode("HTML");
 
-        Set<Location> locations = weatherClient.findLocations(key, city);
+        var locations = repository.findLocations(city);
         String forecast;
-        if (locations.isEmpty()) forecast = "<b>can't get the weather data for " + city + "</b>";
-        else if (locations.size() == 1) {
-            this.weather = weatherClient.forecastForCity(key, "ru", city);
-            forecast = this.weather.currentWeather();
-            messageBuilder.replyMarkup(getMarkups("current"));
-        }
-        else {
+        if (locations.isEmpty()) {
+            forecast = "<b>can't get the weather data for " + city + "</b>";
+        } else if (locations.size() == 1) {
+            weather = repository.forecastForCity(city);
+            forecast = weather.currentWeather();
+            messageBuilder.replyMarkup(markups.get("current"));
+        } else {
             forecast = String.format(
-                    "<b>Было найдено несколько городов с именем %s \nПожалуйста выберите одну из них</b>", city);
-            messageBuilder.replyMarkup(getMarkupForLocations(locations));
+                    "<b>Found multiple cities with name %s</b>", city);
+            markups.putIfAbsent("Locations", getMarkupForLocations(locations));
+            messageBuilder.replyMarkup(markups.get("Locations"));
         }
 
         SendMessage sendMessage = messageBuilder.text(forecast).build();
@@ -69,28 +77,61 @@ public class WeatherHandler implements UpdateHandler {
     private void handleQuery(CallbackQuery query) {
         Long callbackChatId = query.getMessage().getChatId();
         Integer callbackMessageId = query.getMessage().getMessageId();
-        String weatherText = "";
-        if (query.getData().equals("today")) weatherText = this.weather.todayWeather();
-        else if (query.getData().equals("current"))weatherText = this.weather.currentWeather();
-        else if (query.getData().startsWith("WH")) {
-            String coordinates = query.getData().substring(2);
-            query.setData("current");
-            this.weather = weatherClient.forecastForCity(key, "ru", coordinates);
-            weatherText = this.weather.currentWeather();
+        InlineKeyboardMarkup markup;
+        String weatherText;
+
+        if (callbackMessageId != messageId) {
+            AnswerCallbackQuery answerCallbackQuery = new AnswerCallbackQuery(query.getId());
+            answerCallbackQuery.setText("Сообщение устарело");
+            send(client, answerCallbackQuery);
+            return;
+        }
+
+        switch (query.getData()) {
+            case String data when data.equals("today") -> {
+                markup = markups.get(data);
+                weatherText = weather.todayWeather();
+            }
+            case String data when data.equals("current") -> {
+                markup = markups.get(data);
+                weatherText = weather.currentWeather();
+            }
+            case String data when data.equals("return") -> {
+                markup = markups.get("Locations");
+                weatherText = "<b>Выберите город</b>";
+            }
+            case String data when data.equals("todayReturn") -> {
+                markup = markups.get(data);
+                weatherText = weather.todayWeather();
+            }
+            case String data when data.equals("currentReturn") -> {
+                markup = markups.get(data);
+                weatherText = weather.currentWeather();
+            }
+            case String data when data.startsWith("WH") -> {
+                String coordinates = data.substring(3);
+                weather = repository.forecastForCity(coordinates);
+                weatherText = weather.currentWeather();
+                markup = markups.get("currentReturn");
+            }
+            default -> {
+                return;
+            }
         }
 
         var editMessageText = EditMessageText.builder()
                 .chatId(callbackChatId)
                 .messageId(callbackMessageId)
                 .text(weatherText)
-                .replyMarkup(getMarkups(query.getData()))
+                .replyMarkup(markup)
                 .parseMode("HTML")
                 .build();
 
         send(client, editMessageText);
     }
 
-    private InlineKeyboardMarkup getMarkups(String markup) {
+    @PostConstruct
+    private void initMarkups() {
         var currentButton = InlineKeyboardButton.builder()
                 .text("Погода на сегодня")
                 .callbackData("today")
@@ -101,22 +142,52 @@ public class WeatherHandler implements UpdateHandler {
                 .callbackData("current")
                 .build();
 
-        var currentRows = List.of(new InlineKeyboardRow(currentButton));
-        var todayRows = List.of(new InlineKeyboardRow(todayButton));
+        var currentReturnButton = InlineKeyboardButton.builder()
+                .text("Погода на сегодня")
+                .callbackData("todayReturn")
+                .build();
 
-        var currentMarkup= new InlineKeyboardMarkup(currentRows);
+        var todayReturnButton = InlineKeyboardButton.builder()
+                .text("Погода на данный момент")
+                .callbackData("currentReturn")
+                .build();
+
+        var returnButton = InlineKeyboardButton.builder()
+                .text("<--")
+                .callbackData("return")
+                .build();
+
+        var currentRow = new InlineKeyboardRow(currentButton);
+        var currentReturnRow = new InlineKeyboardRow(currentReturnButton, returnButton);
+
+        var todayRow = new InlineKeyboardRow(todayButton);
+        var todayReturnRow = new InlineKeyboardRow(todayReturnButton, returnButton);
+
+        var currentRows = List.of(new InlineKeyboardRow(currentRow));
+        var currentReturnRows = List.of(new InlineKeyboardRow(currentReturnRow));
+
+        var todayRows = List.of(new InlineKeyboardRow(todayRow));
+        var todayReturnRows = List.of(new InlineKeyboardRow(todayReturnRow));
+
+        var currentMarkup = new InlineKeyboardMarkup(currentRows);
+        var currentReturnMarkup = new InlineKeyboardMarkup(currentReturnRows);
+
         var todayMarkup = new InlineKeyboardMarkup(todayRows);
+        var todayReturnMarkup = new InlineKeyboardMarkup(todayReturnRows);
 
-        if (markup.equals("today")) return todayMarkup;
-        else if (markup.equals("current")) return currentMarkup;
-        else return null;
+        markups.put("current", currentMarkup);
+        markups.put("currentReturn", currentReturnMarkup);
+        markups.put("today", todayMarkup);
+        markups.put("todayReturn", todayReturnMarkup);
     }
 
-    private @NotNull InlineKeyboardMarkup getMarkupForLocations(Set<Location> locations) {
-        var buttons = locations.stream().map(location -> InlineKeyboardButton.builder()
-                .text(location.country() + "-" + location.name())
-                .callbackData("WH" + location.coords())
-                .build()).toList();
+    private InlineKeyboardMarkup getMarkupForLocations(Collection<Location> locations) {
+        var buttons = locations.stream()
+                .map(location -> InlineKeyboardButton.builder()
+                        .text(location.country() + "-" + location.name())
+                        .callbackData("WH " + location.coords())
+                        .build())
+                .toList();
 
         var rows = buttons.stream()
                 .map(InlineKeyboardRow::new)
@@ -125,17 +196,10 @@ public class WeatherHandler implements UpdateHandler {
         return new InlineKeyboardMarkup(rows);
     }
 
-//    @Scheduled(cron = "3 * * * * *") TODO
-//    private void sendWeatherAtMidnight() {
-//        String weather = weatherClient.forecastForCity(key, "ru", "Baku").todayWeather();
-//        var sendMessage = SendMessage.builder().chatId(5012958501L).text(weather).parseMode("HTML").build();
-//
-//        send(client, sendMessage);
-//    }
-
     private void send(TelegramClient client, SendMessage sendMessage) {
         try {
-            client.execute(sendMessage);
+            Message execute = client.execute(sendMessage);
+            messageId = execute.getMessageId();
         } catch (TelegramApiException e) {
             log.error(e.getLocalizedMessage());
         }
@@ -144,6 +208,14 @@ public class WeatherHandler implements UpdateHandler {
     private void send(TelegramClient client, EditMessageText editMessageText) {
         try {
             client.execute(editMessageText);
+        } catch (TelegramApiException e) {
+            log.error(e.getLocalizedMessage());
+        }
+    }
+
+    private void send(TelegramClient client, AnswerCallbackQuery answerCallbackQuery) {
+        try {
+            client.execute(answerCallbackQuery);
         } catch (TelegramApiException e) {
             log.error(e.getLocalizedMessage());
         }

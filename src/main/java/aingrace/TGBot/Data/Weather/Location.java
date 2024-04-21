@@ -2,16 +2,19 @@ package aingrace.TGBot.Data.Weather;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.springframework.data.annotation.Id;
 
+import java.io.Serializable;
 import java.util.Objects;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record Location(@JsonProperty("id") String id,
+//@RedisHash
+public record Location(@Id String id,
                        @JsonProperty("name") String name,
                        @JsonProperty("region") String region,
                        @JsonProperty("country") String country,
                        @JsonProperty("lat") double latitude,
-                       @JsonProperty("lon") double longitude) {
+                       @JsonProperty("lon") double longitude) implements Serializable {
 
     public String coords() {
         return latitude + " " + longitude;

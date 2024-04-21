@@ -25,7 +25,7 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
 
     @Override
     public void consume(Update update) {
-        log.info("Update received");
+        log.info(updateInfo(update));
         publisher.publishEvent(new UpdateReceivedEvent(this, update));
     }
 
@@ -37,5 +37,32 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
     @Override
     public String getBotToken() {
         return key;
+    }
+
+    private String updateInfo(Update update) {
+        if (update.hasMessage()) {
+            String chatName = update.getMessage().getChat().getFirstName();
+            String from = update.getMessage().getFrom().getUserName();
+            long chatId = update.getMessage().getChatId();
+            return String.format("Message received in %s, from %s, ID -> %d", chatName, from, chatId);
+        } else if (update.hasCallbackQuery()) {
+            var query = update.getCallbackQuery();
+            String chat = query.getMessage().getChat().getFirstName();
+            String from = query.getFrom().getUserName();
+            Long chatId = query.getMessage().getChatId();
+            return String.format("Callback query received in %s, from %s, ID -> %d", chat, from, chatId);
+        }
+
+        //TODO
+        String info = "";
+        info += switch (update) {
+            case Update upd when upd.hasBusinessConnection() -> "Business connection,";
+            case Update upd when upd.hasBusinessMessage() -> "Business message,";
+            case Update upd when upd.hasChannelPost() -> "Channel post,";
+            case Update upd when upd.hasChatJoinRequest() -> "Chat join request,";
+            case Update upd when upd.hasChatMember() -> "Chat member,";
+            default -> "";
+        };
+        return info;
     }
 }
