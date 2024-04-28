@@ -80,35 +80,35 @@ public class WeatherHandler implements UpdateHandler {
         InlineKeyboardMarkup markup;
         String weatherText;
 
-        if (callbackMessageId != messageId) {
-            AnswerCallbackQuery answerCallbackQuery = new AnswerCallbackQuery(query.getId());
-            answerCallbackQuery.setText("Сообщение устарело");
-            send(client, answerCallbackQuery);
-            return;
-        }
 
         switch (query.getData()) {
             case String data when data.equals("today") -> {
+                if (checkQuery(callbackMessageId, query)) return;
                 markup = markups.get(data);
                 weatherText = weather.todayWeather();
             }
             case String data when data.equals("current") -> {
+                if (checkQuery(callbackMessageId, query)) return;
                 markup = markups.get(data);
                 weatherText = weather.currentWeather();
             }
             case String data when data.equals("return") -> {
+                if (checkQuery(callbackMessageId, query)) return;
                 markup = markups.get("Locations");
                 weatherText = "<b>Выберите город</b>";
             }
             case String data when data.equals("todayReturn") -> {
+                if (checkQuery(callbackMessageId, query)) return;
                 markup = markups.get(data);
                 weatherText = weather.todayWeather();
             }
             case String data when data.equals("currentReturn") -> {
+                if (checkQuery(callbackMessageId, query)) return;
                 markup = markups.get(data);
                 weatherText = weather.currentWeather();
             }
             case String data when data.startsWith("WH") -> {
+                if (checkQuery(callbackMessageId, query)) return;
                 String coordinates = data.substring(3);
                 weather = repository.forecastForCity(coordinates);
                 weatherText = weather.currentWeather();
@@ -128,6 +128,16 @@ public class WeatherHandler implements UpdateHandler {
                 .build();
 
         send(client, editMessageText);
+    }
+
+    private boolean checkQuery(Integer callbackMessageId, CallbackQuery query) {
+        if (callbackMessageId != messageId) {
+            AnswerCallbackQuery answerCallbackQuery = new AnswerCallbackQuery(query.getId());
+            answerCallbackQuery.setText("Сообщение устарело");
+            send(client, answerCallbackQuery);
+            return true;
+        }
+        return false;
     }
 
     @PostConstruct

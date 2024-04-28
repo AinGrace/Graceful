@@ -53,9 +53,7 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
             return String.format("Callback query received in %s, from %s, ID -> %d", chat, from, chatId);
         }
 
-        //TODO
-        String info = "";
-        info += switch (update) {
+        return switch (update) {
             case Update upd when upd.hasBusinessConnection() -> "Business connection,";
             case Update upd when upd.hasBusinessMessage() -> "Business message,";
             case Update upd when upd.hasChannelPost() -> "Channel post,";
@@ -63,6 +61,5 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
             case Update upd when upd.hasChatMember() -> "Chat member,";
             default -> "";
         };
-        return info;
     }
 }

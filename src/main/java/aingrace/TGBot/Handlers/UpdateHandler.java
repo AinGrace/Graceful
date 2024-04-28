@@ -7,6 +7,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 
 import java.util.Optional;
+import java.util.function.Consumer;
 
 public interface UpdateHandler {
 
@@ -31,5 +32,9 @@ public interface UpdateHandler {
 
     default Optional<CallbackQuery> getCallbackQuery(Update update) {
         return Optional.ofNullable(update.getCallbackQuery());
+    }
+
+    default void ifCallbackQueryPresent(Consumer<CallbackQuery> queryConsumer, Update update) {
+        getCallbackQuery(update).ifPresent(queryConsumer);
     }
 }
